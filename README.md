@@ -24,7 +24,7 @@ Code was developed using R version 4.2.3.
 4) **RFSLDA.R**: performs RFSLDA on Data  .
 5) **lda_final_iters_fromtop50.RData**: RFSLDA results saved after running the RFSLDA for R=50 iterations. 
 6) **RFSLDAValidation.R**: Compares the RFSLDA method with popular supervised learning methods like Support vector machine and multinomial logistic model using a train test validation.
-RFSLDA.pdf: Preprint of the paper (Under submission):  All the results obtained here are presented in the paper.
+7) **RFSLDA.pdf**: Preprint of the paper (Under submission):  All the results obtained here are presented in the paper.
 
 
 
