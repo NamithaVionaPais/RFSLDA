@@ -1,11 +1,122 @@
 setwd("/Users/namithapais/Documents/Documents - Namitha’s MacBook Pro/Thesis_NVP/Chapter1/NewData/")
 load("cancer.RData")
 
+Data<-cancer[,-52]
+
+########################## Tau-Path Method ########################
+
+tot_sub<-rowSums(Data)
+#Calculating Abundance
+Abnd_Data<-Data
+for(i in 1:nrow(Data))
+{
+  Abnd_Data[i,]<-(Data[i,]/tot_sub[i])*100
+}
+
+Abnd_Measure<-colSums(Abnd_Data)
+th<-1
+
+#Calculating Prevelance
+Prev_Data<-ifelse(Abnd_Data<=1,0,1)
+Prev_Measure<-colSums(Prev_Data)
+
+
+#Selecting top-K
+
+cmat <- function(x,y){
+  if(!is.numeric(x)) stop("x should be in numeric format \n")
+  if(!is.numeric(y)) stop("y should be in numeric fomrat \n")
+  
+  n <- length(x)
+  cmatrix <- matrix(0,nrow=n,ncol=n)
+  
+  for ( i in 1:n){
+    for ( j in 1:n) {
+      if((x[i]-x[j])*(y[i]-y[j]) > 0) cmatrix[i,j] <- 1
+      else if((x[i]-x[j])*(y[i]-y[j]) < 0) cmatrix[i,j] <- -1
+    }
+  }
+  
+  return(cmatrix)
+}
+
+## A function to calculate tau-path ##
+TauPath <- function(mat){
+  ###input: C Matrix
+  
+  path <- NULL
+  t <- numeric(0)
+  for( i in 1:dim(mat)[1]-1){
+    offave<- sum(mat[1:(1+i),1:(1+i)])/((1+i)^2-(1+i))
+    t <- cbind(t,offave)
+  }
+  colnames(t) <- NULL
+  t <- t[-1]
+  return(t)
+}
+
+## A function to re-order our observations ##
+ReOrder <- function(x,y){
+  ##position of paris
+  poi <- c(1:length(x))
+  ##Combine two vectors as pairs
+  mypair <- cbind(x,y,poi)
+  ##get C Matrix
+  Cmatrix <- cmat(x,y)
+  ##Set initial values to rearrangement 
+  Rearrange <- NULL
+  ##keep recording the number of columns of C Matrix
+  n <- ncol(mypair)*length(Cmatrix)/length(mypair)
+  
+  while(n >1){
+    ##get row sums
+    rowsums <- apply(X=Cmatrix,MARGIN=1,FUN=sum)
+    ## A break situation
+    if(max(rowsums)-min(rowsums)==0) {break}
+    ##record the index of the row with smallest sum
+    MinIndex <- order(rowsums)[1]
+    ##Rearrange the pairs
+    Rearrange <- rbind(Rearrange,mypair[MinIndex,])  
+    ##Renew Cmatrix
+    Cmatrix <- Cmatrix[-MinIndex,-MinIndex]
+    ##Renew mypair
+    mypair <- mypair[-MinIndex,]
+    n <- ncol(mypair)*length(Cmatrix)/length(mypair)
+  }
+  ##Reverse the output
+  Rearrange <- cbind(rev(Rearrange[,1]),rev(Rearrange[,2]),rev(Rearrange[,3]))
+  Rearrange <- rbind(mypair,Rearrange)
+  rownames(Rearrange) <- NULL
+  return(Rearrange)
+}
+
+x<-Abnd_Measure
+y<-Prev_Measure
+
+Reorder.transp <- ReOrder(x,y)
+x2 <- Reorder.transp[,1]
+y2 <- Reorder.transp[,2]
+t2 <- TauPath(cmat(x2,y2))
+#plot(t2)
+
+k <- 50
+sig <- Reorder.transp[1:k,1:3]
+index <- sig[,3]
+rank <- c(1:length(Abnd_Measure))
+strng_index<- rank[index]
+weak_index <- rank[-index]
+a<-strng_index
+
+#Selecting the top K features from tau-path method
+Data1<-Data[,a]
+Data1$Others<-rowSums(Data[,-a])
+pred_name=colnames(Data1)
+cls<-cancer$cls.sample
+cancer<-cbind(Data1,cls)
+colnames(cancer)[52]<-"cls.sample"
 dim(cancer)
 head(cancer)
 summary(cancer)
-
-cancer$cls.sample<-as.factor(cancer$cls.sample)
 p <- 0.8
 strats <- cancer$cls.sample
 rr <- split(1:length(strats), strats)
@@ -65,31 +176,32 @@ library(lessR)
 library(tm)
 library(topicmodels)
 library(combinat)
-myDTM<- as.DocumentTermMatrix(train[,-150], weighting = weightTf)
+topic1<-c("Topic1","Topic2")
+actual<-train[,52]
+myDTM<- as.DocumentTermMatrix(train[,-52], weighting = weightTf)
 myDTM
 lda_mod<- LDA(myDTM, k = 2,control = list(seed=33))
 Gamma_lda<-lda_mod@gamma
-topic1<-c("Topic1","Topic2")
-library()
+
+
 pred<-as.factor(topic1[(apply(Gamma_lda, 1, which.max))])
 #for k topics k! combinations.
 classcomb<-permn(2)
 #list
 accuracy1<-c()
-actual<-train[,150]
 for(i in 1:length(classcomb))
 {
   pred11<-factor(pred,levels=topic1[classcomb[[i]]])
-  tab1<-table(pred11,train[,150]);
+  tab1<-table(pred11,train[,52]);
   accuracy1[i]<-sum(diag(tab1))/sum(tab1)
 }
 b1=which.max(accuracy1)
 pred11<-factor(pred,levels=topic1[classcomb[[b1]]])
-tab1<-table(pred11,train[,150]);tab1
+tab1<-table(pred11,train[,52]);tab1
 sum(diag(tab1))/sum(tab1)
 
 #hyperparamters
-Data1<-train[,-150]
+Data1<-train[,-52]
 pred_name=colnames(Data1)
 niter1=1
 q1=1
@@ -252,7 +364,7 @@ lda_fs<-function(n,p,niter,threshold,c)
 
 ########################## Optimal Set ########################
 #n=number of features available in the predictor basket
-n=length(colnames(train[,-150]))
+n=length(colnames(train[,-52]))
 #p=number of predictors to initialize the random feature set
 p=(n/2)
 #niter-Minimum number of iterations to be performed
@@ -278,11 +390,12 @@ for(i in 1:R)
   lda_final_iters[[i]]<-get_lda_results(i)
 }
 
-#save(lda_final_iters, file="lda_final_iters_cancerdata.RData") 
+#save(lda_final_iters, file="lda_final_iters_cancerdata_fromtopK.RData") 
 
 #From the R iterations identify the iteration with the highest weighted accuracy
 R<-50
-load("lda_final_iters_cancerdata.RData") 
+#load("lda_final_iters_cancerdata.RData") 
+load("lda_final_iters_cancerdata_fromtopK.RData") 
 ac_int_list<-c()
 ac_fin_list<-c()
 pred_int_list<-list()
@@ -301,10 +414,20 @@ for(i in 1:R)
   len_finl[i]<-length(unlist(lda_final_iters[[i]][5]))
 }
 which.max(unlist(ac_fin_list))
-#a12=unlist(lda_final_iters[[(which.max(unlist(ac_fin_list)))]][[5]])
-a12<-unlist(lda_final_iters[[41]][[5]])
+a12=unlist(lda_final_iters[[(which.max(unlist(ac_fin_list)))]][[5]])
 which.max(ac_fin_list)
-data=Data1[,a12]
+
+
+p <- 0.8
+strats <- cancer$cls.sample
+rr <- split(1:length(strats), strats)
+set.seed(10)
+idx <- sort(as.numeric(unlist(sapply(rr, function(x) sample(x, length(x) * p)))))
+
+train <- cancer[idx, ]
+
+test <- cancer[-idx, ]
+data=train[,a12]
 
 
 #posterior(lda_mod, test[,-1])
@@ -318,19 +441,19 @@ pred<-as.factor(topic1[(apply(Gamma_lda, 1, which.max))])
 classcomb<-permn(2)
 #list
 accuracy1<-c()
-actual<-train[,150]
+actual<-train[,52]
 for(i in 1:length(classcomb))
 {
   pred11<-factor(pred,levels=topic1[classcomb[[i]]])
-  tab1<-table(pred11,train[,150]);
+  tab1<-table(pred11,train[,52]);
   accuracy1[i]<-sum(diag(tab1))/sum(tab1)
 }
 b1=which.max(accuracy1)
 pred11<-factor(pred,levels=topic1[classcomb[[b1]]])
-tab1<-table(pred11,train[,150]);tab1
+tab1<-table(pred11,train[,52]);tab1
 sum(diag(tab1))/sum(tab1)
 
-Datatest<-test[,-150]
+Datatest<-test[,-52]
 lda_inf <- posterior(lda_mod, Datatest[,a12])
 pred_test<-as.factor(topic1[(apply(lda_inf$topics, 1, which.max))])
 t1<-c()
@@ -349,8 +472,49 @@ for( i in 1:length(pred_test))
   }
 }
 pred1_test1<-as.factor(pred1_test1)
-actual<-as.factor(test[,150])
+actual<-as.factor(test[,52])
 tabf<-table(pred1_test1,actual);tabf
 sum(diag(tabf))/length(test[,1])
 
+
+
+#Multinomial Logit
+
+library(nnet)
+
+# Training the multinomial model
+multinom_model <- multinom(cls.sample ~ ., data = train[,c(a12)])
+summary(multinom_model)
+
+
+# Predicting the values for train dataset
+prediction_mlogit_train <- predict(multinom_model, newdata = train, "class")
+# Building classification table
+mlogit_tab_train <- table(prediction_mlogit_train,train$cls.sample);mlogit_tab_train
+# Calculating accuracy - sum of diagonal elements divided by total obs
+round((sum(diag(mlogit_tab_train))/sum(mlogit_tab_train)),2)
+
+# Predicting the class for test dataset
+prediction_mlogit_test <- predict(multinom_model, newdata = test, "class")
+# Building classification table
+mlogit_tab_test<- table(prediction_mlogit_test,test$cls.sample);mlogit_tab_test
+mlogit_tab_test
+round((sum(diag(mlogit_tab_test))/sum(mlogit_tab_test)),2)
+
+#MMulticlass SVM
+library(e1071) 
+train$cls.sample<-as.factor(train$cls.sample)
+svm_model<- svm(cls.sample~., data=train[,c(a12)], 
+                method="C-classification", kernal="linear", 
+                gamma=0.1, cost=10)
+
+summary(svm_model)
+prediction_svm_train <- predict(svm_model, train[,a12])
+svm_tab_train<- table(train$cls.sample, prediction_svm_train);svm_tab_train
+
+round((sum(diag(svm_tab_train))/sum(svm_tab_train)),2)
+prediction_svm_test <- predict(svm_model, test)
+svm_tab_test<- table(prediction_svm_test,test$cls.sample);svm_tab_test
+svm_tab_test
+round((sum(diag(svm_tab_test))/sum(svm_tab_test)),2)
 

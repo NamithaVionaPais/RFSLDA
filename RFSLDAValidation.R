@@ -8,18 +8,18 @@ col1<-c("Response","Clostridium.XlVa","unclassified_Bacteroidales","Paraprevotel
 p <- 0.8
 strats <- Data_109$Response
 rr <- split(1:length(strats), strats)
-set.seed(3)
+set.seed(13)
 idx <- sort(as.numeric(unlist(sapply(rr, function(x) sample(x, length(x) * p)))))
 
-train <- Data_109[idx, ]
+train <- Data_109[idx,col1]
 
-test <- Data_109[-idx, ]
+test <- Data_109[-idx,col1]
 
 summary(Data_109$Response)/nrow(Data_109)
 summary(train$Response)/nrow(train)
 summary(test$Response)/nrow(test)
 actual<-test$Response
-WAcc1<-function(tab)
+WAcc1<-function(tab,actual)
 {
   a1<-((0.6*(diag(tab)[1]/table(actual)[1]))+(0.15*(diag(tab)[2]/table(actual)[2]))+(0.25*(diag(tab)[2]/table(actual)[2])))
   return(as.numeric(a1))
@@ -31,7 +31,7 @@ library(nnet)
 
 # Training the multinomial model
 multinom_model <- multinom(Response ~ ., data = train)
-summary(multinom_model)
+#summary(multinom_model)
 
 
 # Predicting the values for train dataset
@@ -47,13 +47,14 @@ prediction_mlogit_test <- predict(multinom_model, newdata = test, "class")
 mlogit_tab_test<- table(prediction_mlogit_test,test$Response);mlogit_tab_test
 mlogit_tab_test
 round((sum(diag(mlogit_tab_test))/sum(mlogit_tab_test)),2)
-WAcc1(mlogit_tab_test)
+WAcc1(mlogit_tab_train,train$Response)
+WAcc1(mlogit_tab_test,test$Response)
 #MMulticlass SVM
 library(e1071) 
 
 svm_model<- svm(Response~., data=train, 
                 method="C-classification", kernal="linear", 
-                gamma=0.1, cost=10)
+                gamma=0.1, cost=20)
 
 summary(svm_model)
 
@@ -65,15 +66,18 @@ prediction_svm_test <- predict(svm_model, test)
 svm_tab_test<- table(prediction_svm_test,test$Response);svm_tab_test
 svm_tab_test
 round((sum(diag(svm_tab_test))/sum(svm_tab_test)),2)
-WAcc1(svm_tab_test)
+WAcc1(svm_tab_test,test$Response)
 
+library(lessR)
+library(tm)
 library(topicmodels)
+library(combinat)
 train <- Data_109[idx, col1]
 test <- Data_109[-idx, col1]
 train1<-train[,-1]
 myDTM<- as.DocumentTermMatrix(train1, weighting = weightTf)
 myDTM
-lda_mod<- LDA(myDTM, k = 3,control = list(seed=33))
+lda_mod<- LDA(myDTM, k = 3,control = list(seed=5))
 Gamma_lda<-lda_mod@gamma
 topic1<-c("Topic1","Topic2","Topic3")
 pred<-as.factor(topic1[(apply(Gamma_lda, 1, which.max))])
@@ -86,7 +90,7 @@ for(i in 1:length(classcomb))
 {
   pred11<-factor(pred,levels=topic1[classcomb[[i]]])
   tab1<-table(pred11,train[,1]);
-  accuracy1[i]<-WAcc1(tab1)
+  accuracy1[i]<-WAcc1(tab1,train$Response)
 }
 b1=which.max(accuracy1)
 pred11<-factor(pred,levels=topic1[classcomb[[b1]]])
@@ -115,5 +119,11 @@ for( i in 1:length(pred_test))
 actual<-test$Response
 tabf<-table(pred1_test1,test[,1]);tabf
 sum(diag(tabf))/length(test[,1])
-WAcc1(tabf)
+WAcc1(svm_tab_test,test$Response)
+WAcc1(mlogit_tab_test,test$Response)
+WAcc1(tabf,test$Response)
 
+
+WAcc1(svm_tab_train,train$Response)
+WAcc1(mlogit_tab_train,train$Response)
+WAcc1(tab1,train$Response)
