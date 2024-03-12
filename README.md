@@ -22,10 +22,7 @@ Code was developed using R version 4.2.3.
 2) **Data.rda**: Feature data( Bacteria counts) .
 3) **actual.rda**: Observed health labels .
 4) **RFSLDA.R**: performs RFSLDA on Data  .
-5) **lda_final_iters_fromtop50.RData**: RFSLDA results saved after running the RFSLDA for R=50 iterations. 
-6) **RFSLDAValidation.R**: Compares the RFSLDA method with popular supervised learning methods like Support vector machine and multinomial logistic model using a train test validation.
-7) Preprint of the paper (Under submission) can be found at https://assets.researchsquare.com/files/rs-2865154/v1_covered_9a4b958c-3e20-4104-850e-85a66433fdd0.pdf?c=1683784043 .
-All the results obtained here are presented in the paper.
+5) **lda_final_iters_fromtop50.RData**: RFSLDA results saved after running the RFSLDA for R=50 iterations.
 
 
 
