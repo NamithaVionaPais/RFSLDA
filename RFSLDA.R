@@ -354,7 +354,6 @@ c=1
 
 get_lda_results<-function(seed)
 {
-  set.seed(seed)
   niter1=1
   q1=1
   q2=0
