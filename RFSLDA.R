@@ -138,7 +138,7 @@ Gamma_lda<-lda_mod@gamma
 pred<-as.factor(topic1[(apply(Gamma_lda, 1, which.max))])
 WAcc1<-function(tab)
 {
-  a1<-((0.6*(diag(tab)[1]/table(actual)[1]))+(0.15*(diag(tab)[2]/table(actual)[2]))+(0.25*(diag(tab)[2]/table(actual)[2])))
+  a1<-((0.6*(diag(tab)[1]/table(actual)[1]))+(0.15*(diag(tab)[2]/table(actual)[2]))+(0.25*(diag(tab)[3]/table(actual)[3])))
   return(as.numeric(a1))
 }
 #for k topics k! combinations.
